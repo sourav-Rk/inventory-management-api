@@ -7,10 +7,10 @@ export interface ISaleService {
     pageSize?: number
   ): Promise<{ data: ISale[]; total: number }>;
   getSalesByDateRange(
+    page: number,
+    pageSize: number,
     from?: Date | null,
-    to?: Date | null,
-    page?: number,
-    pageSize?: number
+    to?: Date | null
   ): Promise<{
     rows: SaleReportRowDTO[];
     totalSalesCount: number;

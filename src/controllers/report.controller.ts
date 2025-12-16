@@ -52,10 +52,10 @@ export class ReportController {
         : null;
 
     const sales = await this.saleService.getSalesByDateRange(
-      fromDt,
-      toExclusive,
       p,
-      ps
+      ps,
+      fromDt,
+      toExclusive
     );
 
     const salesSummary = [
@@ -126,13 +126,13 @@ export class ReportController {
         : null;
 
     const report = await this.saleService.getSalesByDateRange(
-      fromDt,
-      toExclusive,
       1,
-      50000
+      50000,
+      fromDt,
+      toExclusive
     );
 
-    const rows = report.rows; 
+    const rows = report.rows;
 
     const doc = new PDFDocument({ margin: 30 });
     const chunks: Buffer[] = [];
@@ -235,7 +235,10 @@ export class ReportController {
       to = customTo ? new Date(customTo) : null;
     }
 
-    const report = await this.itemService.getInventoryReport(p, ps,{from, to});
+    const report = await this.itemService.getInventoryReport(p, ps, {
+      from,
+      to,
+    });
 
     const inventorySummary = [
       {
