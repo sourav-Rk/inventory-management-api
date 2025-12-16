@@ -81,10 +81,10 @@ export class SaleService implements ISaleService {
     totalPages: number;
   }> {
     const data = await this.saleRepository.getSalesReportAggregated(
-      from,
-      to,
       page as number,
-      pageSize as number
+      pageSize as number,
+      from,
+      to
     );
 
     return data;

@@ -86,103 +86,102 @@ export class SaleRepository implements ISaleRepository {
   }
 
   async getSalesReportAggregated(
-  from?: Date | null,
-  to?: Date | null,
-  page: number = 1,
-  pageSize: number = 20
-): Promise<{
-  rows: any[];
-  totalSalesCount: number;
-  totalRevenue: number;
-  avgSale: number;
-  totalPages: number;
-}> {
-  const match: any = {};
-  if (from || to) {
-    match.date = {};
-    if (from) match.date.$gte = from;
-    if (to) match.date.$lt = to;
+    page: number = 1,
+    pageSize: number = 20,
+    from?: Date | null,
+    to?: Date | null
+  ): Promise<{
+    rows: any[];
+    totalSalesCount: number;
+    totalRevenue: number;
+    avgSale: number;
+    totalPages: number;
+  }> {
+    const match: any = {};
+    if (from || to) {
+      match.date = {};
+      if (from) match.date.$gte = from;
+      if (to) match.date.$lt = to;
+    }
+
+    const skip = (page - 1) * pageSize;
+
+    const result = await SaleModel.aggregate([
+      { $match: match },
+
+      {
+        $lookup: {
+          from: "items",
+          localField: "item",
+          foreignField: "_id",
+          as: "item",
+        },
+      },
+      { $unwind: { path: "$item", preserveNullAndEmptyArrays: true } },
+
+      {
+        $lookup: {
+          from: "customers",
+          localField: "customer",
+          foreignField: "_id",
+          as: "customer",
+        },
+      },
+      { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
+
+      {
+        $facet: {
+          rows: [
+            { $sort: { date: -1 } },
+            { $skip: skip },
+            { $limit: pageSize },
+            {
+              $project: {
+                _id: 0,
+                date: {
+                  $dateToString: { format: "%Y-%m-%d", date: "$date" },
+                },
+                item: { $ifNull: ["$item.name", "Unknown Item"] },
+                quantity: 1,
+                totalPrice: 1,
+                customer: {
+                  $ifNull: [
+                    "$customer.name",
+                    { $ifNull: ["$customerName", "Cash"] },
+                  ],
+                },
+              },
+            },
+          ],
+
+          totals: [
+            {
+              $group: {
+                _id: null,
+                totalSalesCount: { $sum: 1 },
+                totalRevenue: { $sum: "$totalPrice" },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const rows = result[0]?.rows ?? [];
+    const totals = result[0]?.totals?.[0] ?? {
+      totalSalesCount: 0,
+      totalRevenue: 0,
+    };
+
+    return {
+      rows,
+      totalSalesCount: totals.totalSalesCount,
+      totalRevenue: totals.totalRevenue,
+      avgSale:
+        totals.totalSalesCount > 0
+          ? totals.totalRevenue / totals.totalSalesCount
+          : 0,
+      totalPages: Math.max(1, Math.ceil(totals.totalSalesCount / pageSize)),
+    };
   }
-
-  const skip = (page - 1) * pageSize;
-
-  const result = await SaleModel.aggregate([
-    { $match: match },
-
-    {
-      $lookup: {
-        from: "items",
-        localField: "item",
-        foreignField: "_id",
-        as: "item",
-      },
-    },
-    { $unwind: { path: "$item", preserveNullAndEmptyArrays: true } },
-
-    {
-      $lookup: {
-        from: "customers",
-        localField: "customer",
-        foreignField: "_id",
-        as: "customer",
-      },
-    },
-    { $unwind: { path: "$customer", preserveNullAndEmptyArrays: true } },
-
-    {
-      $facet: {
-        rows: [
-          { $sort: { date: -1 } },
-          { $skip: skip },
-          { $limit: pageSize },
-          {
-            $project: {
-              _id: 0,
-              date: {
-                $dateToString: { format: "%Y-%m-%d", date: "$date" },
-              },
-              item: { $ifNull: ["$item.name", "Unknown Item"] },
-              quantity: 1,
-              totalPrice: 1,
-              customer: {
-                $ifNull: ["$customer.name", { $ifNull: ["$customerName", "Cash"] }],
-              },
-            },
-          },
-        ],
-
-        totals: [
-          {
-            $group: {
-              _id: null,
-              totalSalesCount: { $sum: 1 },
-              totalRevenue: { $sum: "$totalPrice" },
-            },
-          },
-        ],
-      },
-    },
-  ]);
-
-  const rows = result[0]?.rows ?? [];
-  const totals = result[0]?.totals?.[0] ?? {
-    totalSalesCount: 0,
-    totalRevenue: 0,
-  };
-
-  return {
-    rows,
-    totalSalesCount: totals.totalSalesCount,
-    totalRevenue: totals.totalRevenue,
-    avgSale:
-      totals.totalSalesCount > 0
-        ? totals.totalRevenue / totals.totalSalesCount
-        : 0,
-    totalPages: Math.max(
-      1,
-      Math.ceil(totals.totalSalesCount / pageSize)
-    ),
-  };
-}
-
 }

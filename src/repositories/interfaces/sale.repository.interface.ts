@@ -21,10 +21,10 @@ export interface ISaleRepository {
   }>;
 
   getSalesReportAggregated(
-    from?: Date | null,
-    to?: Date | null,
     page: number,
-    pageSize: number
+    pageSize: number,
+    from?: Date | null,
+    to?: Date | null
   ): Promise<{
     rows: any[];
     totalSalesCount: number;
